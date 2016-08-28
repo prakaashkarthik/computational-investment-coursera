@@ -14,6 +14,15 @@ import sys
 # NumPy import
 import numpy as np
 
+# Functions that I need to implement: 
+#   initialize() -- that will clear all the NaN entries and other quirks of these tools found in other tutorials
+#   returns_calc(startdate, enddate, symbols, allocation, frequency='daily')
+#   mean_returns_calc(startdate, enddate, symbols, allocations, frequency='daily')
+#   stddev_returns_calc(startdate, enddate, symbols, allocation, frequency='daily')
+#   sharpe_ratio_calc(same as above)
+#   cumulative_returns_calc(same as above)
+
+
 # Function: sharpe_ratio_calc
 # Description: 
 #   Takes in mean returns, stddev of returns, and the frequency - daily or weekly
@@ -31,6 +40,8 @@ def sharpe_ratio_calc(mean_returns, stddev_returns,  frequency='daily'):
     sharpe_ratio = multiplier * (mean_returns/stddev_returns)
 
     return sharpe_ratio
+
+# From my work laptop
 
 # Function: simulate
 # Description: 
