@@ -60,31 +60,57 @@ class Orders:
 		print 'Number of shares:', self.num_of_shares
 		print 'Date of order:', self.full_date
 
+class Portfolio:
+
+    def __init__(self, cash_amount, holdings_total):
+        self.cash_amount = cash_amount
+        self.holdings_per_symbol = {}
+        self.holdings_total = 0
+        self.total = self.cash_amount
+
+    def total_calc(self):
+        self.holdings_total = 0
+        for symb in self.holdings_per_symbol:
+            self.holdings_total += self.holdings_per_symbol[symb]
+        
+        self.total = self.cash_amount + self.holdings_total
+        return self.total
+
+    def print_portfolio(self):
+        print 'Cash available: ', self.cash_amount
+        for symb in self.holdings_per_symbol:
+            print 'Cash in ', symb, ':', self.holdings_per_symbol[symb]
+        print 'Portfolio Total: ', self.total
 
 
-def execute_order(order, shares_per_symbol, database, fund_total):
+def execute_order(order, shares_per_symbol, database, portfolio):
 
 	price = database[3][order.symbol][order.full_date]
 
-        print 'Current fund total: ', fund_total
 	if order.order_type == 'Buy':
             if order.symbol in shares_per_symbol:
                 shares_per_symbol[order.symbol] += order.num_of_shares
             else:
                 shares_per_symbol[order.symbol] = order.num_of_shares
 
-	    print 'buy'
-	    fund_total = fund_total - (order.num_of_shares * price)
+            if shares_per_symbol[order.symbol] > 0:
+                portfolio.holdings_per_symbol[order.symbol] = shares_per_symbol[order.symbol] * price
+	    
+            portfolio.cash_amount = portfolio.cash_amount - (order.num_of_shares * price)
+
 	elif order.order_type == 'Sell':
             
             if order.symbol in shares_per_symbol:
                 shares_per_symbol[order.symbol] -= order.num_of_shares
-                print 'sell'
-	        fund_total = fund_total + (order.num_of_shares * price)
+                portfolio.holdings_per_symbol[order.symbol] = shares_per_symbol[order.symbol] * price
             else:
-                print 'No shares to sell'
-                
-        return fund_total
+                print 'shorting'
+                shares_per_symbol[order.symbol] = -(order.num_of_shares)
+
+            
+            portfolio.cash_amount = portfolio.cash_amount + (order.num_of_shares * price)
+
+        return portfolio
 
 
 
@@ -96,8 +122,9 @@ def main():
 
 	keys = ['open', 'high', 'low', 'close', 'volume', 'actual_close']
 
-	fund_daily_returns = []
-	fund_daily_returns.append(initial_sum)
+        p = Portfolio(initial_sum, 0)
+
+	fund_daily_returns = {}
 
 	orders_dict_by_date = defaultdict(list)
 	orders_dict_by_symbol = defaultdict(list)
@@ -141,30 +168,26 @@ def main():
 	
         delta = dt.timedelta(days=1)
         d = first_date
-        while d <= last_date:
+        last_return = 0
+        todays_return = 0
+        for idx in range(len(timestamps)):
+            d = timestamps[idx]
             if d in orders_dict_by_date:
                 for o in orders_dict_by_date[d]:
-                    fund_value = execute_order(o, shares_per_symbol, symbol_data, fund_daily_returns[len(fund_daily_returns) - 1])
-                    fund_daily_returns.append(fund_value)
-                    #fund_daily_returns.append(execute_order(order, symbol_data, fund_daily_returns[len(fund_daily_returns) - 1]))
+                    p = execute_order(o, shares_per_symbol, symbol_data, p)
             else: 
                 for symb in shares_per_symbol:
-                    share_price_change = symbol_data[3][symb][d] - symbol_data[3][symb][d - delta]
-                    last_return = fund_daily_returns[len(fund_daily_returns) - 1]
-                    todays_return = shares_per_symbol[symb] * share_price_change
-                    fund_daily_returns.append(last_return + todays_return)
-                    
-            d += delta
-            print shares_per_symbol
+                    if shares_per_symbol[symb] > 0:
+                        p.holdings_per_symbol[symb] = shares_per_symbol[symb] * symbol_data[3][symb][timestamps[idx]]
 
 
-        print fund_daily_returns
+            fund_daily_returns[d] = p.total_calc()
 
 
-
-	#for date in sorted(orders_dict):
-	#	for o in orders_dict[date]:
-			
+        writer = csv.writer(open(values_file, 'wb'), delimiter=',')
+        for d in sorted(fund_daily_returns):
+            row_to_enter = [d.year, d.month, d.day, fund_daily_returns[d]]
+            writer.writerow(row_to_enter)
 
 
 
